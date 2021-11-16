@@ -26,8 +26,35 @@ YELLOW_LASER = pygame.image.load(os.path.join("assets", "pixel_laser_yellow.png"
 # background
 BG = pygame.transform.scale(pygame.image.load(os.path.join("assets", "background-black.png")), (HEIGHT, WIDTH))
 
+class Laser:
+    def __init__(self, x, y, img):
+        self.x = x
+        self.y = y
+        self.img = img
+        self.mask = pygame.mask.from_surface(self.img)
+
+    def draw(self, window):
+        window.blit(self.img, (self.x, self.y))
+
+    def move(self, vel):
+        self.y += vel
+
+    def off_screen(self, height):
+        return  self.y <= height and sel.y >= 0
+
+    def collision(self, obj):
+        return collide(obj, self)
+
+    def collide(obj1, obj2):
+        offset_x = obj2.x - obj1.x
+        offset_y = obj2.y - obj1.y
+        return obj1.mask.overlap(obj2.mask, (offset_x, offset_y)) != None
+
+
 
 class Ship:
+    COOLDOWN = 30
+
     def __init__(self, x, y, health=100):
         self.x = x
         self.y = y
@@ -39,12 +66,32 @@ class Ship:
 
     def draw(self, window):
         window.blit(self.ship_img, (self.x, self.y))
+        for laser in self.lasers:
+            laser.draw(window)
 
+    def move_laser(self, vel, objs):
+        self.cooldown()
+        for laser in self.lasers:
+            laser.move(vel)
+            if laser.of
     def get_width(self):
         return self.ship_img.get_width()
 
     def get_height(self):
         return self.ship_img.get_height()
+
+    def cooldown(self):
+        if self.cool_down_counter >= self.COOLDOWN:
+            self.cool_down_counter = 0
+        elif self.cool_down_counter > 0:
+            self.cool_down_counter =+ 1
+
+    def shoot(self):
+        if self.cool_down_counter == 0:
+            laser = Laser(x, y, self.laser_img)
+            self.lasers.append(laser)
+            self.cool_down_counter = 1
+
 
 
 class Player(Ship):
@@ -70,6 +117,8 @@ class Enemy(Ship):
 
     def move(self, vel):
         self.y += vel
+
+
 
 
 def main():
@@ -113,10 +162,17 @@ def main():
 
     while run:
         clock.tick(fps)
+        redraw_window()
 
         if lives <= 0 or player.health == 0:
             lost = True
             lost_count += 1
+
+        if lost:
+           if lost_count > fps * 3:
+               run = False
+           else:
+               continue
 
         if len(enemies) == 0:
             level = + 1
@@ -138,6 +194,8 @@ def main():
             player.y -= player_vel
         if keys[pygame.K_s] and player.y + player_vel + player.get_height() < HEIGHT:  # move down
             player.y += player_vel
+        if keys[pygame.K_SPACE]:
+            player.shoot()
 
         for enemy in enemies:
             enemy.move(enemy_vel)
@@ -145,7 +203,7 @@ def main():
                 lives -= 1
                 enemies.remove(enemy)
 
-        redraw_window()
+
 
 
 main()
